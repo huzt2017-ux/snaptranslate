@@ -163,8 +163,8 @@ const beforePack = async () => {
  * @type import("electron-builder").Configuration
  */
 const build = {
-    appId: "com.esearch.app",
-    executableName: "e-search",
+    appId: "com.snaptranslate.app",
+    executableName: "snaptranslate",
     directories: {
         output: "build",
     },

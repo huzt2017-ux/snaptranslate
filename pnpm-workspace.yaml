@@ -1,0 +1,7 @@
+allowBuilds:
+  '@biomejs/biome': true
+  canvas: true
+  electron: true
+  esbuild: true
+  onnxruntime-node: true
+  uiohook-napi: true

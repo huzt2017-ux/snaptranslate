@@ -1,7 +1,8 @@
 {
   "name": "eSearch",
+  "productName": "SnapTranslate",
   "version": "15.3.3",
-  "description": "识屏 · 搜索",
+  "description": "跨平台截图、OCR 与 AI 翻译工具",
   "main": "./out/main/main.js",
   "scripts": {
     "pack": "npm run build && electron-builder --dir -c electron-builder.config.js",

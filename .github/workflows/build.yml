@@ -1,51 +1,56 @@
-name: Build/release
+name: Build and release
 
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
   release:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        arch: [x64, arm64]
-      max-parallel: 3
+        include:
+          - name: macOS Apple Silicon
+            os: macos-14
+            arch: arm64
+          - name: Windows x64
+            os: windows-latest
+            arch: x64
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: 20
+          version: 10.17.0
 
-      - name: Install Linux Lib
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install libx11-dev libxext-dev libxtst-dev libxrender-dev libxmu-dev libxmuu-dev rpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
-      - name: ${{ matrix.os }} ${{ matrix.arch }} build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
         env:
-          M_ARCH: ${{matrix.arch}}
+          M_ARCH: ${{ matrix.arch }}
           USE_HARD_LINKS: false
-        run: |
-          npm install -g pnpm@10.0.0
-          pnpm install
-          pnpm run dist
+        run: pnpm run dist
 
-      - name: release
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: "build/*"
-          draft: false
-          prerelease: true
+          files: |
+            build/*.dmg
+            build/*.zip
+            build/*.exe
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
