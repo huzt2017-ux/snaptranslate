@@ -1,0 +1,40 @@
+name: Windows release
+
+"on":
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Windows package
+        env:
+          M_ARCH: x64
+          USE_HARD_LINKS: false
+        run: pnpm run dist
+
+      - name: Upload Windows installer to the existing release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v15.3.3-snap.1
+          files: |
+            build/*.exe
+            build/*-win32-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
