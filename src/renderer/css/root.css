@@ -69,6 +69,7 @@
     --main-font: sans-serif;
     --bar-size: 60px;
     --bar-icon: 0.7;
+    --draw-bar-size: calc(var(--bar-size) * 0.82);
     --base-size1: 32px;
     --b-button: var(--base-size1);
     --o-padding: 8px;

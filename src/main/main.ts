@@ -2405,7 +2405,7 @@ const defaultSetting: setting = {
             "copy",
             "save",
         ],
-        稍后出现: false,
+        稍后出现: true,
     },
     字体: {
         主要字体: "",
@@ -2421,7 +2421,7 @@ const defaultSetting: setting = {
     工具栏跟随: "展示内容优先",
     自动搜索: true,
     鼠标跟随栏: {
-        显示: true,
+        显示: false,
     },
     取色器: { 像素大小: 10, 大小: 15, 显示: true, 默认格式: "HEX" },
     显示四角坐标: true,

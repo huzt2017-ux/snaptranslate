@@ -526,13 +526,22 @@ function drawM(v: boolean) {
  * 编辑栏跟踪工具栏
  */
 function trackLocation() {
-    const h = toolBar.offsetTop;
-    let l = toolBar.offsetLeft + toolBar.offsetWidth + 8;
+    const h = Math.max(
+        barGap,
+        Math.min(
+            toolBar.offsetTop + toolBar.offsetHeight - drawBar.offsetHeight,
+            window.innerHeight - drawBar.offsetHeight - barGap,
+        ),
+    );
+    let l = toolBar.offsetLeft + toolBar.offsetWidth + barGap;
     if (drawBarPosi === "left") {
-        l = toolBar.offsetLeft - drawBar.offsetWidth - 8;
+        l = toolBar.offsetLeft - drawBar.offsetWidth - barGap;
     }
     drawBar.style.top = `${h}px`;
-    drawBar.style.left = `${l}px`;
+    drawBar.style.left = `${Math.max(
+        barGap,
+        Math.min(l, window.innerWidth - drawBar.offsetWidth - barGap),
+    )}px`;
 }
 
 // 在其他应用打开
@@ -1751,90 +1760,52 @@ function followBar(op?: { x: number; y: number }) {
     const zy = (finalRect[1] + editorP.y) * editorP.zoom;
     const zw = finalRect[2] * editorP.zoom;
     const zh = finalRect[3] * editorP.zoom;
-    let x = 0;
-    let y = 0;
-    if (!op) {
-        x = followBarList.at(-1)?.[0] ?? 0;
-        y = followBarList.at(-1)?.[1] ?? 0;
-    } else {
-        x = op.x;
-        y = op.y;
-    }
-    followBarList.push([x, y]);
+    followBarList.push(
+        op ? [op.x, op.y] : (followBarList.at(-1) ?? [0, 0]),
+    );
     const [x1, y1] = [zx, zy];
     const x2 = x1 + zw;
     const y2 = y1 + zh;
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
     const toolW = toolBar.offsetWidth;
+    const toolH = toolBar.offsetHeight;
     const drawW = drawBar.offsetWidth;
+    const drawH = drawBar.offsetHeight;
     const gap = barGap;
-    const groupW = toolW + gap + drawW;
+    const clamp = (value: number, min: number, max: number) =>
+        Math.max(min, Math.min(value, max));
 
-    if ((x1 + x2) / 2 <= x) {
-        // 向右
-        if (x2 + groupW + gap <= maxWidth) {
-            toolBar.style.left = `${x2 + gap}px`; // 贴右边
-            drawBarPosi = "right";
-        } else {
-            if (工具栏跟随 === "展示内容优先") {
-                // 超出屏幕贴左边
-                if (x1 - groupW - gap >= 0) {
-                    toolBar.style.left = `${x1 - toolW - gap}px`;
-                    drawBarPosi = "left";
-                } else {
-                    // 还超贴右内
-                    toolBar.style.left = `${maxWidth - groupW}px`;
-                    drawBarPosi = "right";
-                }
-            } else {
-                // 直接贴右边,即使遮挡
-                toolBar.style.left = `${x2 - groupW - gap}px`;
-                drawBarPosi = "right";
-            }
-        }
-    } else {
-        // 向左
-        if (x1 - groupW - gap >= 0) {
-            toolBar.style.left = `${x1 - toolW - gap}px`; // 贴左边
-            drawBarPosi = "left";
-        } else {
-            if (工具栏跟随 === "展示内容优先") {
-                // 超出屏幕贴右边
-                if (x2 + groupW <= maxWidth) {
-                    toolBar.style.left = `${x2 + gap}px`;
-                    drawBarPosi = "right";
-                } else {
-                    // 还超贴左内
-                    toolBar.style.left = `${0 + drawW + gap}px`;
-                    drawBarPosi = "left";
-                }
-            } else {
-                toolBar.style.left = `${x1 + gap}px`;
-                drawBarPosi = "left";
-            }
-        }
-    }
+    // Primary actions form a compact horizontal dock below the selection.
+    toolBar.style.left = `${clamp(
+        (x1 + x2 - toolW) / 2,
+        gap,
+        Math.max(gap, maxWidth - toolW - gap),
+    )}px`;
+    const canPlaceBelow = y2 + gap + toolH <= maxHeight;
+    const canPlaceAbove = y1 - gap - toolH >= 0;
+    const toolTop = canPlaceBelow
+        ? y2 + gap
+        : canPlaceAbove
+          ? y1 - toolH - gap
+          : 工具栏跟随 === "展示内容优先"
+            ? gap
+            : clamp(y2 - toolH, gap, maxHeight - toolH - gap);
+    toolBar.style.top = `${toolTop}px`;
 
-    if (y >= (y1 + y2) / 2) {
-        if (y2 - toolBar.offsetHeight >= 0) {
-            toolBar.style.top = `${y2 - toolBar.offsetHeight}px`;
-        } else {
-            if (y1 + toolBar.offsetHeight > maxHeight) {
-                toolBar.style.top = `${maxHeight - toolBar.offsetHeight}px`;
-            } else {
-                toolBar.style.top = `${y1}px`;
-            }
-        }
-    } else {
-        if (y1 + toolBar.offsetHeight <= maxHeight) {
-            toolBar.style.top = `${y1}px`;
-        } else {
-            toolBar.style.top = `${maxHeight - toolBar.offsetHeight}px`;
-        }
-    }
+    // Drawing modes stay in a smaller floating rail beside the selection.
+    drawBarPosi = x1 - drawW - gap >= 0 ? "left" : "right";
+    const drawLeft =
+        drawBarPosi === "left"
+            ? x1 - drawW - gap
+            : Math.min(maxWidth - drawW - gap, x2 + gap);
+    drawBar.style.left = `${Math.max(gap, drawLeft)}px`;
+    drawBar.style.top = `${clamp(
+        (y1 + y2 - drawH) / 2,
+        gap,
+        Math.max(gap, maxHeight - drawH - gap),
+    )}px`;
     drawBar.style.opacity = toolBar.style.opacity = "1";
-    trackLocation();
 }
 
 // 修复final_rect负数
@@ -2103,9 +2074,26 @@ function undo(v: boolean) {
     if (fabricCanvas) fabricCanvas.loadFromJSON(c.canvas);
 }
 
+const fillModeShapes = new Set<EditType["shape"]>([
+    "rect",
+    "circle",
+    "polygon",
+]);
+
+function isTransparentFill(value: unknown) {
+    if (typeof value !== "string" || value.length === 0) return true;
+    if (value === "transparent") return true;
+    try {
+        return chroma(value).alpha() === 0;
+    } catch {
+        return false;
+    }
+}
+
 function getShapePro(name: keyof typeof shapePro) {
     const v = {
         fc: fillColor,
+        solidFc: fillColor,
         sc: strokeColor,
         sw: strokeWidth,
         shadow: 0,
@@ -2117,7 +2105,7 @@ function getShapePro(name: keyof typeof shapePro) {
     }
     if (!shapePro[name]) shapePro[name] = {};
 
-    for (const x of ["fc", "sc", "sw", "shadow"] as const) {
+    for (const x of ["fc", "solidFc", "sc", "sw", "shadow"] as const) {
         if (shapePro[name][x]) {
             // @ts-ignore
             v[x] = shapePro[name][x];
@@ -2127,8 +2115,19 @@ function getShapePro(name: keyof typeof shapePro) {
                 store.get(`图像编辑.形状属性.${name}.${x}`) ?? v[x];
         }
     }
-    const nv: { fc: string; sc: string; sw: number; shadow?: number } = {
+    if (!isTransparentFill(v.fc)) {
+        v.solidFc = v.fc;
+        shapePro[name].solidFc = v.fc;
+    }
+    const nv: {
+        fc: string;
+        solidFc: string;
+        sc: string;
+        sw: number;
+        shadow?: number;
+    } = {
         fc: v.fc,
+        solidFc: v.solidFc,
         sc: v.sc,
         sw: v.sw,
     };
@@ -2235,23 +2234,36 @@ function setEditType<T extends keyof EditType>(
         mainType === "draw" ||
             (mainType === "shape" && strokeShapes.includes(type)),
     );
+    updateShapeFillModeControl();
 }
 
 function showSideBarItem(index: number) {
     showSideBar(true);
+    const drawButtonSize =
+        drawMainBar.firstElementChild?.getBoundingClientRect().width || bSize;
     for (const [i, { w, el }] of drawBarSideElChildren.entries()) {
         if (index === i) {
             const height = Math.ceil(el.el.children.length / w);
             const x = w;
             const y = height;
-            el.style({ display: "", width: `${x * bSize}px` });
-            let left = bSize * 1;
-            if (drawBar.offsetLeft + bSize + bSize * x > window.innerWidth)
-                left = -bSize * x;
+            el.style({ display: "", width: `${x * drawButtonSize}px` });
+            let left = drawButtonSize;
+            if (
+                drawBar.offsetLeft + drawButtonSize + drawButtonSize * x >
+                window.innerWidth
+            )
+                left = -drawButtonSize * x;
+            const triggerTop =
+                (drawMainBar.children.item(i) as HTMLElement | null)?.offsetTop ??
+                i * drawButtonSize;
+            const top = Math.min(
+                triggerTop,
+                Math.max(0, drawBar.offsetHeight - drawButtonSize * y),
+            );
             drawSideBar.style.left = `${left}px`;
-            drawSideBar.style.top = `${bSize * Math.min(i, drawMainBar.children.length - y)}px`;
-            drawSideBar.style.width = `${bSize * x}px`;
-            drawSideBar.style.height = `${bSize * y}px`;
+            drawSideBar.style.top = `${top}px`;
+            drawSideBar.style.width = `${drawButtonSize * x}px`;
+            drawSideBar.style.height = `${drawButtonSize * y}px`;
         } else {
             el.style({ display: "none" });
         }
@@ -2732,6 +2744,7 @@ function getFObjectV() {
     colorStrokeEl.sv(pro.sc ?? strokeColor);
 
     ableChangeColor();
+    updateShapeFillModeControl();
 }
 /**
  * 更改全局或选中形状的颜色
@@ -2749,24 +2762,25 @@ function setFObjectV(
         /* 选中Object */
         const n = fabricCanvas.getActiveObjects();
         for (const i of n) {
-            if (fill) {
+            if (fill !== null) {
                 // 只改变形的颜色
                 if (i.canChangeFill) i.set("fill", fill);
             }
-            if (stroke) i.set("stroke", stroke);
-            if (sw) i.set("strokeWidth", sw);
+            if (stroke !== null) i.set("stroke", stroke);
+            if (sw !== null) i.set("strokeWidth", sw);
             if (i.形状) {
-                store.set(`图像编辑.形状属性.${i.形状}.fc`, fill || fillColor);
-                store.set(
-                    `图像编辑.形状属性.${i.形状}.sc`,
-                    stroke || strokeColor,
-                );
-                store.set(`图像编辑.形状属性.${i.形状}.sw`, sw || strokeWidth);
-                shapePro[i.形状] = {
-                    fc: fill || fillColor,
-                    sc: stroke || strokeColor,
-                    sw: sw || strokeWidth,
+                const current = shapePro[i.形状] ?? getShapePro(i.形状);
+                const next = {
+                    ...current,
+                    fc: fill ?? i.fill?.toString() ?? current.fc,
+                    sc: stroke ?? i.stroke?.toString() ?? current.sc,
+                    sw: sw ?? i.strokeWidth ?? current.sw,
                 };
+                if (fill !== null && !isTransparentFill(fill)) {
+                    next.solidFc = fill;
+                }
+                shapePro[i.形状] = next;
+                store.set(`图像编辑.形状属性.${i.形状}`, next);
             }
         }
         fabricCanvas.renderAll();
@@ -2795,11 +2809,75 @@ function setFObjectV(
         console.log(2);
         /* 非画笔非选中 */
         const pro = shapePro[editType.shape] ?? {};
-        if (fill) pro.fc = fill;
-        if (stroke) pro.sc = stroke;
-        if (sw) pro.sw = sw;
+        if (fill !== null) {
+            pro.fc = fill;
+            if (!isTransparentFill(fill)) pro.solidFc = fill;
+        }
+        if (stroke !== null) pro.sc = stroke;
+        if (sw !== null) pro.sw = sw;
         store.set(`图像编辑.形状属性.${editType.shape}`, pro);
     }
+    updateShapeFillModeControl();
+}
+
+function getFillModeTargets() {
+    return fabricCanvas.getActiveObjects().filter((object) => {
+        return (
+            object.canChangeFill &&
+            object.形状 &&
+            fillModeShapes.has(object.形状 as EditType["shape"])
+        );
+    });
+}
+
+function updateShapeFillModeControl() {
+    const targets = getFillModeTargets();
+    let enabled = targets.length > 0;
+    let fill = targets[0]?.fill?.toString();
+
+    if (!enabled && nowType === "shape" && fillModeShapes.has(editType.shape)) {
+        enabled = true;
+        fill = getShapePro(editType.shape).fc;
+    }
+
+    const hollow = enabled && isTransparentFill(fill);
+    drawShapeFillModeEl.el.classList.toggle("hollow", hollow);
+    drawShapeFillModeEl.el.classList.toggle("disabled", !enabled);
+    drawShapeFillModeLabel.el.textContent = hollow ? "空心" : "实心";
+    drawShapeFillModeEl.el.setAttribute("aria-pressed", String(hollow));
+    drawShapeFillModeEl.attr({
+        title: enabled
+            ? `当前为${hollow ? "空心" : "实心"}，点击切换为${hollow ? "实心" : "空心"}`
+            : "矩形、椭圆和多边形可切换实心或空心",
+    });
+}
+
+function toggleShapeFillMode() {
+    const targets = getFillModeTargets();
+    if (targets.length > 0) {
+        const makeHollow = !isTransparentFill(targets[0].fill?.toString());
+        for (const object of targets) {
+            const name = object.形状 as EditType["shape"];
+            const pro = shapePro[name] ?? getShapePro(name);
+            const currentFill = object.fill?.toString() ?? pro.fc;
+            if (!isTransparentFill(currentFill)) pro.solidFc = currentFill;
+            pro.fc = makeHollow ? "#00000000" : pro.solidFc || fillColor;
+            object.set("fill", pro.fc);
+            shapePro[name] = pro;
+            store.set(`图像编辑.形状属性.${name}`, pro);
+        }
+        fabricCanvas.renderAll();
+    } else if (nowType === "shape" && fillModeShapes.has(editType.shape)) {
+        const pro = shapePro[editType.shape] ?? getShapePro(editType.shape);
+        const makeHollow = !isTransparentFill(pro.fc);
+        if (!isTransparentFill(pro.fc)) pro.solidFc = pro.fc;
+        pro.fc = makeHollow ? "#00000000" : pro.solidFc || fillColor;
+        shapePro[editType.shape] = pro;
+        store.set(`图像编辑.形状属性.${editType.shape}`, pro);
+    } else {
+        return;
+    }
+    getFObjectV();
 }
 
 function newFilterSelect(o: point, no: point) {
@@ -3216,9 +3294,17 @@ drawColorSwitchP.add(
 const drawColorP = view().attr({ id: "draw_color_p" });
 const drawColorColor = view().attr({ id: "draw_color_color" });
 const drawStrokeWidth = view().attr({ id: "draw_stroke_width" });
+const drawShapeFillModeLabel = view().class("shape_fill_label").add("实心");
+const drawShapeFillModeEl = view()
+    .attr({
+        id: "draw_shape_fill_mode",
+        title: "矩形、椭圆和多边形可切换实心或空心",
+    })
+    .add([view().class("shape_fill_preview"), drawShapeFillModeLabel]);
 
 const drawColorSide = drawSideGen2("color_size").add([
     drawColorSwitchP,
+    drawShapeFillModeEl,
     drawColorP,
     drawColorColor,
     drawStrokeWidth,
@@ -4674,6 +4760,7 @@ setDrawMode(colorM);
 drawColorSwitchP.on("click", () => {
     setDrawMode(colorM === "fill" ? "stroke" : "fill");
 });
+drawShapeFillModeEl.on("click", toggleShapeFillMode);
 
 ableChangeColor();
 
