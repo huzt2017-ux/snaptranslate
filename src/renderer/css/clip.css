@@ -94,13 +94,14 @@ body input {
 /* 工具 */
 #tool_bar {
     display: flex;
-    flex-direction: column;
-    width: var(--bar-size);
+    flex-direction: row;
+    width: max-content;
+    height: var(--bar-size);
     position: fixed;
     z-index: 99;
     left: 10px;
     top: 100px;
-    border-radius: calc(var(--bar-size) / 6);
+    border-radius: calc(var(--bar-size) / 3);
     overflow: hidden;
     transition: opacity var(--transition);
     box-shadow: var(--shadow);
@@ -205,30 +206,50 @@ body input {
 #draw_bar {
     left: 80px;
     top: 100px;
-    width: var(--bar-size);
-    height: calc(var(--bar-size) * 7);
+    width: var(--draw-bar-size);
+    height: auto;
     position: fixed;
     z-index: 100;
     transition: width var(--transition), opacity var(--transition);
 }
 #draw_bar > div {
-    width: var(--bar-size);
-    border-radius: calc(var(--bar-size) / 6);
+    width: var(--draw-bar-size);
+    border-radius: calc(var(--draw-bar-size) / 4);
     box-shadow: var(--shadow);
+}
+#draw_main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none !important;
 }
 #draw_main > div,
 .draw_items > div {
-    width: var(--bar-size);
-    height: var(--bar-size);
-    border-radius: calc(var(--bar-size) / 6);
+    width: var(--draw-bar-size);
+    height: var(--draw-bar-size);
+    border-radius: calc(var(--draw-bar-size) / 4);
     transition: var(--transition);
     &:not(:has(.range-b)):active {
         transform: var(--button-active);
     }
 }
+#draw_main > div {
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--d-bar-bg0) 72%, transparent);
+    backdrop-filter: var(--blur);
+    box-shadow: var(--shadow);
+}
+#draw_main > div.select {
+    background: #0b8ffb !important;
+}
+#draw_main > div > .icon {
+    filter: var(--d-icon-color);
+}
 #draw_main > div > .icon,
 .draw_items > div > .icon {
-    width: calc(var(--bar-size) * var(--bar-icon));
+    width: calc(var(--draw-bar-size) * var(--bar-icon));
 }
 #draw_main > div:not(:has(.range-b)):hover,
 .draw_items > div:not(:has(.range-b)):hover {
@@ -433,6 +454,31 @@ body input {
 }
 #draw_color_switch {
     position: relative;
+}
+#draw_shape_fill_mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: calc(var(--draw-bar-size) / 4.4);
+    line-height: 1;
+    box-sizing: border-box;
+}
+#draw_shape_fill_mode .shape_fill_preview {
+    width: 52%;
+    height: 34%;
+    border: 2px solid var(--font-color);
+    border-radius: 2px;
+    background: var(--font-color);
+    box-sizing: border-box;
+}
+#draw_shape_fill_mode.hollow .shape_fill_preview {
+    background: transparent;
+}
+#draw_shape_fill_mode.disabled {
+    opacity: 0.28;
+    pointer-events: none;
 }
 #draw_fill_storke_mark {
     position: absolute;

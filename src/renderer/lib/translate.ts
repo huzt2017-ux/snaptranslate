@@ -1,6 +1,39 @@
 import xtranslator from "xtranslator";
 import type { setting } from "../../ShareTypes";
 
+type TranslatorSetting = setting["翻译"]["翻译器"][0];
+
+export function getTranslatorEngineType(type: TranslatorSetting["type"]) {
+    return (type === "llm" || type === "openaiCompatible"
+        ? "chatgpt"
+        : type) as keyof typeof xtranslator.es;
+}
+
+export function getOpenAICompatibleKeys(
+    keys: TranslatorSetting["keys"],
+) {
+    const rawConfig = keys.config;
+    const config: { model: string; [key: string]: unknown } = {
+        ...(rawConfig &&
+        typeof rawConfig === "object" &&
+        !Array.isArray(rawConfig)
+            ? rawConfig
+            : {}),
+        model: String(keys.model ?? "").trim(),
+    };
+
+    let url = String(keys.url ?? "").trim();
+    if (url && !/\/chat\/completions\/?$/.test(url)) {
+        url = `${url.replace(/\/+$/, "")}/chat/completions`;
+    }
+
+    return {
+        key: String(keys.key ?? "").trim(),
+        ...(url ? { url } : {}),
+        config,
+    };
+}
+
 export function loadTranslator(
     store: typeof import("../../../lib/store/renderStore")["default"],
 ) {
@@ -27,12 +60,9 @@ export function loadTranslator(
 
 export function getTranslators(
     store: typeof import("../../../lib/store/renderStore")["default"],
-    settingItem: setting["翻译"]["翻译器"][0],
+    settingItem: TranslatorSetting,
 ): InstanceType<(typeof xtranslator)["Translator"]> | undefined {
-    const e =
-        xtranslator.es[
-            settingItem.type === "llm" ? "chatgpt" : settingItem.type
-        ]();
+    const e = xtranslator.es[getTranslatorEngineType(settingItem.type)]();
     if (e) {
         if (settingItem.type === "llm") {
             const model = store
@@ -49,6 +79,9 @@ export function getTranslators(
                     model: model.model,
                 },
             });
+        } else if (settingItem.type === "openaiCompatible") {
+            // @ts-ignore
+            e.setKeys(getOpenAICompatibleKeys(settingItem.keys));
             // @ts-ignore
         } else e.setKeys(settingItem.keys);
         return e;

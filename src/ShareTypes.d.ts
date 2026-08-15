@@ -150,6 +150,7 @@ export interface setting {
         形状属性: {
             [k in EditType["shape"] | EditType["draw"]]?: {
                 fc?: string;
+                solidFc?: string;
                 sc?: string;
                 sw?: number;
                 shadow?: number;
@@ -166,6 +167,7 @@ export interface setting {
             形状: {
                 type: keyof EditType["shape"] | EditType["draw"];
                 fc?: string;
+                solidFc?: string;
                 sc?: string;
                 sw?: number;
                 shadow?: number;
@@ -358,7 +360,10 @@ export interface setting {
         翻译器: {
             id: string;
             name: string;
-            type: keyof typeof import("xtranslator")["default"]["e"] | "llm";
+            type:
+                | keyof typeof import("xtranslator")["default"]["e"]
+                | "llm"
+                | "openaiCompatible";
             keys: Record<string, string | object>;
         }[];
         收藏: {

@@ -76,13 +76,20 @@ import { isDeepStrictEqual } from "../lib/isDeepStrictEqual";
 import { safeJSONParse, tryD, tryx } from "../../../lib/utils";
 import { githubMirrorList } from "../../../lib/github_mirror";
 import { runAI } from "../lib/ai";
+import {
+    getOpenAICompatibleKeys,
+    getTranslatorEngineType,
+} from "../lib/translate";
 import { ocrList } from "../ocr/ocr_omni";
 
 let yauzl: typeof import("yauzl") | null = null;
 
 export { isDeepStrictEqual };
 
-type Engines = keyof typeof translator.e | "llm";
+type Engines =
+    | keyof typeof translator.e
+    | "llm"
+    | "openaiCompatible";
 
 type JustElmentK =
     | "_autostart"
@@ -3741,6 +3748,17 @@ function translatorD(
                 src: "https://learn.microsoft.com/zh-cn/azure/cognitive-services/translator/how-to-create-translator-resource#authentication-keys-and-endpoint-url",
             },
         },
+        openaiCompatible: {
+            t: "AI API（OpenAI兼容）",
+            key: [
+                {
+                    name: "url",
+                    text: "API地址，例如 https://api.example.com/v1/",
+                },
+                { name: "key", text: "API Key" },
+                { name: "model", text: "模型名称" },
+            ],
+        },
         llm: {
             t: "大模型",
             key: [
@@ -3892,15 +3910,15 @@ function translatorD(
                     model: model.model,
                 },
             });
+        } else if (v.type === "openaiCompatible") {
+            translator.e.chatgpt.setKeys(getOpenAICompatibleKeys(v.keys));
         } else {
             // @ts-ignore
             translator.e[v.type].setKeys(v.keys);
         }
         try {
             const r =
-                await translator.e[
-                    v.type === "llm" ? "chatgpt" : v.type
-                ].test();
+                await translator.e[getTranslatorEngineType(v.type)].test();
             console.log(r);
             if (r) testR.el.innerText = t("测试成功");
         } catch (error) {
